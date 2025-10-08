@@ -1,45 +1,65 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Music, TrendingUp, Heart } from "lucide-react";
+import { Users, AlertCircle, BarChart3 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 const Reports = () => {
+  const { data: counts } = useQuery({
+    queryKey: ["dashboard-counts"],
+    queryFn: async () => {
+      const [usersRes, playbackRes, unmappedRes] = await Promise.all([
+        supabase.from("spotify_users").select("id"),
+        supabase.from("user_playback_history").select("id"),
+        supabase.from("unmapped_moods").select("id"),
+      ]);
+      const usersCount = usersRes.data?.length ?? 0;
+      const playbackHistory = playbackRes.data?.length ?? 0;
+      const unmappedCount = unmappedRes.data?.length ?? 0;
+      return {
+        users: usersCount,
+        playbackHistory,
+        unmappedMoods: unmappedCount,
+      };
+    },
+    staleTime: 30_000,
+  });
+
   const stats = [
     {
       title: "Total Users",
-      value: "1,234",
-      change: "+12.5%",
+      value: (counts?.users ?? 0).toLocaleString(),
       icon: Users,
       description: "Active users this month",
     },
     {
-      title: "Playlists Generated",
-      value: "5,678",
-      change: "+23.1%",
-      icon: Music,
-      description: "Total playlists created",
-    },
-    {
-      title: "Avg. Satisfaction",
-      value: "4.8/5",
-      change: "+0.3",
-      icon: Heart,
-      description: "User rating average",
-    },
-    {
-      title: "Most Used Mood",
-      value: "Happy",
-      change: "45% of requests",
-      icon: TrendingUp,
-      description: "Top mood category",
+      title: "Unmapped Moods",
+      value: (counts?.unmappedMoods ?? 0).toLocaleString(),
+      icon: AlertCircle,
+      description: "Pending moods to categorize",
     },
   ];
 
-  const topMoods = [
-    { mood: "Happy", count: 2543, percentage: 45 },
-    { mood: "Calm", count: 1678, percentage: 29 },
-    { mood: "Energetic", count: 892, percentage: 16 },
-    { mood: "Sad", count: 445, percentage: 8 },
-    { mood: "Focus", count: 120, percentage: 2 },
-  ];
+  // Replace with Most Common Unmapped Mood from `unmapped_moods.input_text`
+  const { data: topUnmapped = [] } = useQuery<{ text: string; count: number }[]>({
+    queryKey: ["top-unmapped"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unmapped_moods")
+        .select("input_text");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => {
+        const t = (r.input_text || "").trim();
+        if (!t) return;
+        counts[t] = (counts[t] || 0) + 1;
+      });
+      return Object.entries(counts)
+        .map(([text, count]) => ({ text, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+    },
+    staleTime: 60_000,
+  });
 
   return (
     <div className="space-y-6">
@@ -58,7 +78,7 @@ const Reports = () => {
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-              <p className="text-xs text-green-600 mt-2">{stat.change} from last month</p>
+              {/* Change delta removed per request */}
             </CardContent>
           </Card>
         ))}
@@ -66,27 +86,21 @@ const Reports = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Most Common Moods</CardTitle>
-          <CardDescription>Distribution of mood categories used by users</CardDescription>
+          <CardTitle>Most Common Unmapped Moods</CardTitle>
+          <CardDescription>Top input texts from unmapped moods</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {topMoods.map((item) => (
-              <div key={item.mood} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{item.mood}</span>
-                  <span className="text-muted-foreground">
-                    {item.count} uses ({item.percentage}%)
-                  </span>
+          <div className="space-y-3">
+            {topUnmapped.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No unmapped moods yet.</div>
+            ) : (
+              topUnmapped.map((u) => (
+                <div key={u.text} className="flex items-center justify-between text-sm p-2 border rounded-md">
+                  <span className="font-medium truncate max-w-[60%]">{u.text}</span>
+                  <span className="text-muted-foreground">{u.count}</span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all"
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

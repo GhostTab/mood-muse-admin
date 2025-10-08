@@ -4,38 +4,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// logo displayed from public/Vector.png
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [invalid, setInvalid] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - just navigate to dashboard
-    localStorage.setItem("admin_logged_in", "true");
-    navigate("/admin");
+    // Simple credential check
+    const validUser = email.trim() === "Moodify@123";
+    const validPass = password === "Moodifypass@123";
+    if (validUser && validPass) {
+      localStorage.setItem("admin_logged_in", "true");
+      navigate("/admin");
+    } else {
+      setInvalid(true);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <Shield className="w-6 h-6 text-primary" />
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 overflow-hidden">
+            <img src="/Vector.png" alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           <CardTitle className="text-2xl">Admin Login</CardTitle>
           <CardDescription>Enter your credentials to access the admin panel</CardDescription>
         </CardHeader>
         <CardContent>
+          {invalid && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Invalid credentials</AlertTitle>
+              <AlertDescription>
+                The username or password you entered is incorrect.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Username</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="admin@example.com"
+                type="text"
+                placeholder="username@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

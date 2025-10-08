@@ -1,25 +1,49 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVertical } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface User {
+interface UserRow {
   id: string;
-  name: string;
-  email: string;
-  joinDate: string;
-  playlists: number;
-  status: "active" | "inactive";
+  display_name: string | null;
+  email: string | null;
+  created_at: string | null;
 }
 
 const Users = () => {
-  const users: User[] = [
-    { id: "1", name: "John Doe", email: "john@example.com", joinDate: "2024-01-15", playlists: 12, status: "active" },
-    { id: "2", name: "Sarah Smith", email: "sarah@example.com", joinDate: "2024-01-10", playlists: 8, status: "active" },
-    { id: "3", name: "Mike Johnson", email: "mike@example.com", joinDate: "2024-01-05", playlists: 25, status: "active" },
-    { id: "4", name: "Emma Wilson", email: "emma@example.com", joinDate: "2023-12-28", playlists: 5, status: "inactive" },
-    { id: "5", name: "Alex Brown", email: "alex@example.com", joinDate: "2023-12-20", playlists: 15, status: "active" },
-  ];
+  const queryClient = useQueryClient();
+
+  const { data: users = [], isLoading, isError, error } = useQuery<UserRow[]>({
+    queryKey: ["spotify-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("spotify_users")
+        .select("id, display_name, email, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data || []).map((u: any) => ({
+        id: String(u.id),
+        display_name: u.display_name ?? null,
+        email: u.email ?? null,
+        created_at: u.created_at ?? null,
+      }));
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("spotify_users").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spotify-users"] });
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -33,32 +57,51 @@ const Users = () => {
       <Card>
         <CardHeader>
           <CardTitle>All Users</CardTitle>
-          <CardDescription>{users.length} registered users</CardDescription>
+          <CardDescription>
+            {isLoading ? "Loading…" : isError ? (error as any)?.message || "Error" : `${users.length} registered users`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {users.map((user) => (
+            {isLoading ? (
+              <div className="text-muted-foreground">Loading users…</div>
+            ) : isError ? (
+              <div className="text-muted-foreground">Failed to load users.</div>
+            ) : users.length === 0 ? (
+              <div className="text-muted-foreground">No users found.</div>
+            ) : users.map((user) => (
               <div
                 key={user.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{user.name}</h3>
-                    <Badge variant={user.status === "active" ? "default" : "secondary"}>
-                      {user.status}
-                    </Badge>
+                    <h3 className="font-semibold">{user.display_name || "(no name)"}</h3>
                   </div>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="text-sm text-muted-foreground">{user.email || "(no email)"}</p>
                   <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span>Joined: {user.joinDate}</span>
-                    <span>•</span>
-                    <span>{user.playlists} playlists</span>
+                    <span>Joined: {user.created_at ? new Date(user.created_at).toLocaleDateString() : "—"}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Delete user">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently remove the user record from the database. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteUser.mutate(user.id)}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ))}
           </div>

@@ -26,7 +26,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { to: "/admin", icon: AlertCircle, label: "Unmapped Moods", end: true },
     { to: "/admin/reports", icon: LayoutDashboard, label: "Reports" },
     { to: "/admin/users", icon: Users, label: "Users" },
-    { to: "/admin/playlists", icon: Music, label: "Playlists" },
   ];
 
   return (
@@ -34,8 +33,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Sidebar */}
       <aside className="w-64 border-r bg-card flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-xl font-bold">Admin Panel</h1>
-          <p className="text-sm text-muted-foreground mt-1">Mood Playlist Manager</p>
+          <div className="flex items-center gap-3 justify-center">
+            <img src="/Vector.png" alt="Logo" className="w-7 h-7" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            <h1 className="text-xl font-bold">Admin Panel</h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 text-center">Moodify Manager</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">

@@ -2,26 +2,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Music, Eye } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
-interface Playlist {
+interface PlaylistRow {
   id: string;
-  user: string;
-  mood: string;
-  createdAt: string;
-  tracks: number;
-  genre?: string;
+  name: string | null;
+  mood: string | null;
+  created_at: string | null;
+  spotify_user_id: string | null;
 }
 
 const Playlists = () => {
-  const playlists: Playlist[] = [
-    { id: "1", user: "John Doe", mood: "Happy", createdAt: "2024-01-15 10:30", tracks: 25, genre: "Pop" },
-    { id: "2", user: "Sarah Smith", mood: "Calm", createdAt: "2024-01-15 09:15", tracks: 20, genre: "Ambient" },
-    { id: "3", user: "Mike Johnson", mood: "Energetic", createdAt: "2024-01-14 18:45", tracks: 30, genre: "Rock" },
-    { id: "4", user: "Emma Wilson", mood: "Sad", createdAt: "2024-01-14 16:20", tracks: 15, genre: "Indie" },
-    { id: "5", user: "Alex Brown", mood: "Focus", createdAt: "2024-01-14 14:00", tracks: 40, genre: "Classical" },
-    { id: "6", user: "John Doe", mood: "Romantic", createdAt: "2024-01-13 20:30", tracks: 18, genre: "R&B" },
-    { id: "7", user: "Sarah Smith", mood: "Happy", createdAt: "2024-01-13 12:15", tracks: 22, genre: "Dance" },
-  ];
+  const { data: playlists = [], isLoading, isError, error } = useQuery<PlaylistRow[]>({
+    queryKey: ["saved-playlists"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("saved_playlists")
+        .select("id, name, mood, created_at, spotify_user_id")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data || []).map((p: any) => ({
+        id: String(p.id),
+        name: p.name ?? null,
+        mood: p.mood ?? null,
+        created_at: p.created_at ?? null,
+        spotify_user_id: p.spotify_user_id ?? null,
+      }));
+    },
+    staleTime: 15_000,
+  });
 
   const getMoodColor = (mood: string) => {
     const colors: Record<string, string> = {
@@ -45,40 +56,29 @@ const Playlists = () => {
       <Card>
         <CardHeader>
           <CardTitle>All Playlists</CardTitle>
-          <CardDescription>{playlists.length} playlists generated</CardDescription>
+          <CardDescription>
+            {isLoading ? "Loading…" : isError ? (error as any)?.message || "Error" : `${playlists.length} saved playlists`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {playlists.map((playlist) => (
+            {isLoading ? (
+              <div className="text-muted-foreground">Loading playlists…</div>
+            ) : isError ? (
+              <div className="text-muted-foreground">Failed to load playlists.</div>
+            ) : playlists.length === 0 ? (
+              <div className="text-muted-foreground">No saved playlists yet.</div>
+            ) : playlists.map((playlist) => (
               <div
                 key={playlist.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Music className="w-5 h-5 text-primary" />
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Music className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold">{playlist.user}'s Playlist</h3>
-                      <Badge variant={getMoodColor(playlist.mood) as any}>{playlist.mood}</Badge>
-                      {playlist.genre && (
-                        <Badge variant="outline" className="text-xs">
-                          {playlist.genre}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex gap-3 text-sm text-muted-foreground">
-                      <span>{playlist.tracks} tracks</span>
-                      <span>•</span>
-                      <span>{playlist.createdAt}</span>
-                    </div>
-                  </div>
+                  <h3 className="font-semibold">{playlist.name || "(no name)"}</h3>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <Eye className="w-4 h-4 mr-2" />
-                  View
-                </Button>
               </div>
             ))}
           </div>

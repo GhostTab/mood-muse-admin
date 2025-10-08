@@ -1,9 +1,10 @@
-import { useState } from "react";
+import {} from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Check } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface UnmappedMood {
@@ -13,47 +14,45 @@ interface UnmappedMood {
   lastUsed: string;
 }
 
-const MOOD_CATEGORIES = ["Happy", "Sad", "Calm", "Energetic", "Angry", "Romantic", "Focus"];
+// Categories removed along with mapping controls
 
 const UnmappedMoods = () => {
   const { toast } = useToast();
-  const [unmappedMoods, setUnmappedMoods] = useState<UnmappedMood[]>([
-    { id: "1", mood: "vibing", count: 45, lastUsed: "2024-01-15" },
-    { id: "2", mood: "chill vibes", count: 32, lastUsed: "2024-01-14" },
-    { id: "3", mood: "pumped up", count: 28, lastUsed: "2024-01-13" },
-    { id: "4", mood: "nostalgic", count: 19, lastUsed: "2024-01-12" },
-    { id: "5", mood: "motivated", count: 15, lastUsed: "2024-01-11" },
-    { id: "6", mood: "melancholic", count: 12, lastUsed: "2024-01-10" },
-    { id: "7", mood: "hyped", count: 8, lastUsed: "2024-01-09" },
-  ]);
+  const queryClient = useQueryClient();
 
-  const [selectedCategories, setSelectedCategories] = useState<Record<string, string>>({});
+  // Fetch unmapped moods from Supabase
+  const { data: unmappedMoods = [], isLoading, isError, error } = useQuery<UnmappedMood[]>({
+    queryKey: ["unmapped-moods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unmapped_moods")
+        .select("id, input_text, timestamp")
+        .order("timestamp", { ascending: false });
+      if (error) throw error;
+      return (data || []).map((row: any) => ({
+        id: String(row.id),
+        mood: row.input_text,
+        count: 0,
+        lastUsed: row.timestamp ?? "",
+      }));
+    },
+  });
 
-  const handleMap = (moodId: string, mood: string) => {
-    const category = selectedCategories[moodId];
-    if (!category) {
-      toast({
-        title: "Select a category",
-        description: "Please select a mood category first",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Delete unmapped mood
+  const deleteMutation = useMutation({
+    mutationFn: async (moodId: string) => {
+      const { error } = await supabase.from("unmapped_moods").delete().eq("id", moodId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unmapped-moods"] });
+    },
+    onError: (e: any) => {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    },
+  });
 
-    setUnmappedMoods(unmappedMoods.filter((m) => m.id !== moodId));
-    toast({
-      title: "Mood mapped successfully",
-      description: `"${mood}" has been mapped to ${category}`,
-    });
-  };
-
-  const handleDelete = (moodId: string, mood: string) => {
-    setUnmappedMoods(unmappedMoods.filter((m) => m.id !== moodId));
-    toast({
-      title: "Mood deleted",
-      description: `"${mood}" has been removed`,
-    });
-  };
+  // Inline deletion is handled in the button click using deleteMutation
 
   return (
     <div className="space-y-6">
@@ -73,7 +72,14 @@ const UnmappedMoods = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {unmappedMoods.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading unmapped moods…</div>
+            ) : isError ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>Could not load unmapped moods.</p>
+                <p className="text-sm mt-1">{(error as any)?.message || "Check your Supabase table `unmapped_moods`."}</p>
+              </div>
+            ) : unmappedMoods.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <p>No unmapped moods at the moment</p>
                 <p className="text-sm mt-1">All user moods are properly categorized!</p>
@@ -93,37 +99,13 @@ const UnmappedMoods = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Select
-                      value={selectedCategories[mood.id] || ""}
-                      onValueChange={(value) =>
-                        setSelectedCategories({ ...selectedCategories, [mood.id]: value })
-                      }
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MOOD_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      size="icon"
-                      onClick={() => handleMap(mood.id, mood.mood)}
-                      disabled={!selectedCategories[mood.id]}
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDelete(mood.id, mood.mood)}
-                    >
+                    <Button size="icon" variant="ghost" onClick={() => {
+                      deleteMutation.mutate(mood.id, {
+                        onSuccess: () => {
+                          toast({ title: "Mood deleted", description: `"${mood.mood}" has been removed from database` });
+                        }
+                      });
+                    }}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

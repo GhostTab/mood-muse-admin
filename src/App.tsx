@@ -10,7 +10,7 @@ import AdminLayout from "./components/admin/AdminLayout";
 import UnmappedMoods from "./pages/admin/UnmappedMoods";
 import Reports from "./pages/admin/Reports";
 import Users from "./pages/admin/Users";
-import Playlists from "./pages/admin/Playlists";
+// Playlists page removed per request
 
 const queryClient = new QueryClient();
 
@@ -47,14 +47,7 @@ const App = () => (
               </AdminLayout>
             }
           />
-          <Route
-            path="/admin/playlists"
-            element={
-              <AdminLayout>
-                <Playlists />
-              </AdminLayout>
-            }
-          />
+          {/* /admin/playlists route removed */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
