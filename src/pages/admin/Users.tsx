@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserRow {
   id: string;
@@ -16,6 +17,7 @@ interface UserRow {
 
 const Users = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: users = [], isLoading, isError, error } = useQuery<UserRow[]>({
     queryKey: ["spotify-users"],
@@ -37,11 +39,25 @@ const Users = () => {
 
   const deleteUser = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("spotify_users").delete().eq("id", id);
+      const { error } = await supabase
+        .from("spotify_users")
+        .delete()
+        .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["spotify-users"] });
+    onSuccess: async (_res, id) => {
+      await queryClient.refetchQueries({ queryKey: ["spotify-users"], type: "active" });
+      const refreshed = queryClient.getQueryData<UserRow[]>(["spotify-users"]) || [];
+      const stillExists = refreshed.some((u) => u.id === id);
+      if (stillExists) {
+        toast({ title: "Failed to delete user", description: "User still present after delete (RLS/permissions?)" });
+      } else {
+        toast({ title: "User deleted" });
+      }
+    },
+    onError: (err: any) => {
+      const message = err?.message || "Unknown error";
+      toast({ title: "Failed to delete user", description: message });
     },
   });
 
@@ -98,7 +114,9 @@ const Users = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteUser.mutate(user.id)}>Delete</AlertDialogAction>
+                      <AlertDialogAction onClick={() => deleteUser.mutate(user.id)}>
+                        {deleteUser.isPending ? "Deleting…" : "Delete"}
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>

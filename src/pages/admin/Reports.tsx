@@ -7,17 +7,14 @@ const Reports = () => {
   const { data: counts } = useQuery({
     queryKey: ["dashboard-counts"],
     queryFn: async () => {
-      const [usersRes, playbackRes, unmappedRes] = await Promise.all([
+      const [usersRes, unmappedRes] = await Promise.all([
         supabase.from("spotify_users").select("id"),
-        supabase.from("user_playback_history").select("id"),
         supabase.from("unmapped_moods").select("id"),
       ]);
       const usersCount = usersRes.data?.length ?? 0;
-      const playbackHistory = playbackRes.data?.length ?? 0;
       const unmappedCount = unmappedRes.data?.length ?? 0;
       return {
         users: usersCount,
-        playbackHistory,
         unmappedMoods: unmappedCount,
       };
     },

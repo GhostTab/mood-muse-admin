@@ -34,7 +34,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       <aside className="w-64 border-r bg-card flex flex-col">
         <div className="p-6 border-b">
           <div className="flex items-center gap-3 justify-center">
-            <img src="/Vector.png" alt="Logo" className="w-7 h-7" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            <img src="/Vector.png" alt="Logo" className="w-4 h-7" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
             <h1 className="text-xl font-bold">Admin Panel</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1 text-center">Moodify Manager</p>
