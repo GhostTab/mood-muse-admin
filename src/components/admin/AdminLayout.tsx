@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, Music, FileText, LogOut, AlertCircle } from "lucide-react";
+import { LayoutDashboard, Users, Music, FileText, LogOut, AlertCircle, BarChart3, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AdminLayoutProps {
@@ -23,6 +23,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   };
 
   const navItems = [
+    { to: "/admin/analytics", icon: BarChart3, label: "Analytics", end: false },
+    { to: "/admin/sentiment", icon: Brain, label: "Sentiment", end: false },
     { to: "/admin", icon: AlertCircle, label: "Unmapped Moods", end: true },
     { to: "/admin/reports", icon: LayoutDashboard, label: "Reports" },
     { to: "/admin/users", icon: Users, label: "Users" },
@@ -30,8 +32,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r bg-card flex flex-col">
+      {/* Sidebar - Fixed */}
+      <aside className="w-64 border-r bg-card flex flex-col fixed h-screen">
         <div className="p-6 border-b">
           <div className="flex items-center gap-3 justify-center">
             <img src="/Vector.png" alt="Logo" className="w-4 h-7" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
@@ -40,7 +42,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           <p className="text-sm text-muted-foreground mt-1 text-center">Moodify Manager</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -68,8 +70,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      {/* Main Content - Scrollable */}
+      <main className="flex-1 ml-64 overflow-y-auto">
         <div className="p-8">{children}</div>
       </main>
     </div>

@@ -10,6 +10,8 @@ import AdminLayout from "./components/admin/AdminLayout";
 import UnmappedMoods from "./pages/admin/UnmappedMoods";
 import Reports from "./pages/admin/Reports";
 import Users from "./pages/admin/Users";
+import Analytics from "./pages/admin/Analytics";
+import Sentiment from "./pages/admin/Sentiment";
 // Playlists page removed per request
 
 const queryClient = new QueryClient();
@@ -23,6 +25,22 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route
+            path="/admin/analytics"
+            element={
+              <AdminLayout>
+                <Analytics />
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/sentiment"
+            element={
+              <AdminLayout>
+                <Sentiment />
+              </AdminLayout>
+            }
+          />
           <Route
             path="/admin"
             element={
