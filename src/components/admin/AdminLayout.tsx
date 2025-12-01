@@ -24,9 +24,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const navItems = [
     { to: "/admin/analytics", icon: BarChart3, label: "Analytics", end: false },
-    { to: "/admin/sentiment", icon: Brain, label: "Sentiment", end: false },
     { to: "/admin", icon: AlertCircle, label: "Unmapped Moods", end: true },
-    { to: "/admin/reports", icon: LayoutDashboard, label: "Reports" },
     { to: "/admin/users", icon: Users, label: "Users" },
   ];
 

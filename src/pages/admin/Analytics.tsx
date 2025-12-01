@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { RefreshCw, TrendingUp, Users, Activity, Server, AlertCircle, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, Smile, TrendingDown, Calendar, Filter } from "lucide-react";
+import { RefreshCw, TrendingUp, Users, Activity, AlertCircle, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, Smile, TrendingDown, Calendar, Filter } from "lucide-react";
 import { useState, useMemo } from "react";
 
 interface MoodEntry {
@@ -31,12 +31,7 @@ interface User {
   created_at: string | null;
 }
 
-interface SystemLog {
-  id: string;
-  event_type: string;
-  status: string;
-  timestamp: string;
-}
+// System monitoring removed
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
 
@@ -140,27 +135,7 @@ const Analytics = () => {
     retry: 1,
   });
 
-  // Fetch system logs (optional - may not exist)
-  const { data: systemLogs = [], isLoading: logsLoading, error: logsError } = useQuery<SystemLog[]>({
-    queryKey: ["analytics-system-logs"],
-    queryFn: async () => {
-      const { data, error } = await supabaseAdmin
-        .from("system_logs")
-        .select("id, event_type, status, timestamp")
-        .order("timestamp", { ascending: false })
-        .limit(10);
-      if (error) {
-        // If table doesn't exist, return empty array
-        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-          return [];
-        }
-        throw error;
-      }
-      return (data || []) as SystemLog[];
-    },
-    staleTime: 30_000,
-    retry: false, // Don't retry if table doesn't exist
-  });
+  // System monitoring removed
 
 
   // Calculate mood distribution for pie chart - use ALL mood entries
@@ -331,26 +306,18 @@ const Analytics = () => {
     return createdDate >= today;
   }).length;
 
-  // System status
-  const recentLogs = systemLogs.slice(0, 10);
-  const successLogs = systemLogs.filter(log => log.status === 'success' || log.status === 'connected').length;
-  const totalRecentLogs = systemLogs.length;
-  const apiStatus = totalRecentLogs > 0 && successLogs / totalRecentLogs > 0.7 ? 'healthy' : 'unhealthy';
-  
-  // Mock response time (since it's not in the schema)
-  const avgResponseTime = 125; // ms
+  // System monitoring removed
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ["analytics-mood-entries", dateRange] }),
       queryClient.refetchQueries({ queryKey: ["analytics-users"] }),
-      queryClient.refetchQueries({ queryKey: ["analytics-system-logs"] }),
     ]);
     setRefreshing(false);
   };
 
-  const isLoading = moodsLoading || usersLoading || logsLoading;
+  const isLoading = moodsLoading || usersLoading;
 
   return (
     <div className="space-y-6">
@@ -380,19 +347,13 @@ const Analytics = () => {
       </div>
 
       {/* Error Messages */}
-      {(moodsError || usersError || logsError) && (
+      {(moodsError || usersError) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Data Loading Errors</AlertTitle>
           <AlertDescription>
             {moodsError && <div>Moods: {(moodsError as any)?.message || 'Failed to load moods'}</div>}
             {usersError && <div>Users: {(usersError as any)?.message || 'Failed to load users'}</div>}
-            {logsError && (logsError as any)?.code !== 'PGRST116' && (
-              <div>System Logs: {(logsError as any)?.message || 'Failed to load system logs'}</div>
-            )}
-            {logsError && (logsError as any)?.code === 'PGRST116' && (
-              <div className="text-muted-foreground">System Logs: Table does not exist (optional feature)</div>
-            )}
           </AlertDescription>
         </Alert>
       )}
@@ -725,109 +686,7 @@ const Analytics = () => {
         </Card>
       </div>
 
-      {/* System Monitoring Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Server className="h-7 w-7 text-primary" />
-          <h2 className="text-2xl font-semibold">System Monitoring</h2>
-        </div>
-        
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Server className="h-4 w-4" />
-                API Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-muted-foreground">Loading...</div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{apiStatus === 'healthy' ? '🟢' : '🔴'}</span>
-                    <span className="text-lg font-semibold capitalize">{apiStatus}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {totalRecentLogs > 0 
-                      ? `${Math.round((successLogs / totalRecentLogs) * 100)}% success rate`
-                      : 'No recent logs'}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-muted-foreground">Loading...</div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold">{avgResponseTime}ms</div>
-                  <p className="text-sm text-muted-foreground mt-1">Average response time</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Recent Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-muted-foreground">Loading...</div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold">{systemLogs.length}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Last 10 events</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* System Logs Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest System Events</CardTitle>
-            <CardDescription>Most recent system activities and API connections</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-muted-foreground">Loading logs...</div>
-            ) : recentLogs.length === 0 ? (
-              <div className="text-muted-foreground">No system logs found.</div>
-            ) : (
-              <div className="space-y-2">
-                {recentLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">{log.event_type}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                    <Badge
-                      variant={log.status === 'success' || log.status === 'connected' ? 'default' : 'destructive'}
-                    >
-                      {log.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* System monitoring removed */}
     </div>
   );
 };

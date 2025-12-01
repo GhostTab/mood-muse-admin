@@ -8,10 +8,9 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/Login";
 import AdminLayout from "./components/admin/AdminLayout";
 import UnmappedMoods from "./pages/admin/UnmappedMoods";
-import Reports from "./pages/admin/Reports";
 import Users from "./pages/admin/Users";
 import Analytics from "./pages/admin/Analytics";
-import Sentiment from "./pages/admin/Sentiment";
+ 
 // Playlists page removed per request
 
 const queryClient = new QueryClient();
@@ -33,14 +32,7 @@ const App = () => (
               </AdminLayout>
             }
           />
-          <Route
-            path="/admin/sentiment"
-            element={
-              <AdminLayout>
-                <Sentiment />
-              </AdminLayout>
-            }
-          />
+          
           <Route
             path="/admin"
             element={
@@ -49,14 +41,7 @@ const App = () => (
               </AdminLayout>
             }
           />
-          <Route
-            path="/admin/reports"
-            element={
-              <AdminLayout>
-                <Reports />
-              </AdminLayout>
-            }
-          />
+          
           <Route
             path="/admin/users"
             element={
